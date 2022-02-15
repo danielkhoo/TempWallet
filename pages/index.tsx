@@ -1,9 +1,16 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import { Box, Flex, VStack, Text, Select, HStack, Button, Input, IconButton, useClipboard } from '@chakra-ui/react';
+import { CopyIcon, CheckIcon } from '@chakra-ui/icons';
+import type { NextPage } from 'next';
+import Head from 'next/head';
+import Image from 'next/image';
+import { useEffect } from 'react';
+import QR from 'qrcode.react';
+import styles from '../styles/Home.module.css';
 
 const Home: NextPage = () => {
+  const address = 'GvHeR432g7MjN9uKyX3Dzg66TqwrEWgANLnnFZXMeyyj';
+
+  const { hasCopied, onCopy } = useClipboard(address);
   return (
     <div className={styles.container}>
       <Head>
@@ -12,61 +19,83 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+      <Flex flexDir={'column'}>
+        {/* <Flex flexDir={'row'} justifyContent={'space-between'}>
+          <Text>TempWallet</Text>
+          <Text>Wallet</Text>
+        </Flex> */}
+        <VStack mt={16} alignContent={'center'} justifyContent="center">
+          <Select defaultValue={'mainnet'} width="160px" height="36px" textAlign={'center'}>
+            <option value="mainnet">Mainnet</option>
+            <option value="devnet">Devnet</option>
+          </Select>
+          <Text fontSize={'5xl'} fontWeight={'600'}>
+            $145.40
+          </Text>
+          <QR
+            level={'H'}
+            includeMargin={false}
+            //ethereum:0x34aA3F359A9D614239015126635CE7732c18fDF3
+            value={address} //"https://punkwallet.io/"+
+            size={380}
+            imageSettings={{
+              width: 90,
+              height: 90,
+              excavate: true,
+              src: '/logo.svg',
+            }}
+          />
+          <Text width="380px" fontSize="20px" textAlign="center">
+            {address}
+            <IconButton onClick={onCopy} aria-label="Search database" icon={hasCopied ? <CheckIcon /> : <CopyIcon />} variant="unstyled" size="xs" />
+          </Text>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.tsx</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
+          <VStack>
+            <Box width="380px" padding="1rem 2rem" borderRadius="lg">
+              <Flex dir="row" justifyContent="space-between">
+                <Text fontSize="28px" fontWeight="500">
+                  0.5 SOL
+                </Text>
+                <Text fontSize="28px" fontWeight="500">
+                  $50
+                </Text>
+              </Flex>
+              <Input mt={2} placeholder="To Address" />
+              <Flex mt={2} dir="row" justifyContent="space-between">
+                <Input placeholder="Amount" mr={4} />
+                <Button colorScheme="teal" width="150px" variant="outline">
+                  Transfer
+                </Button>
+              </Flex>
+            </Box>
+            <Box width="380px" padding="1rem 2rem" borderRadius="lg">
+              <Flex dir="row" justifyContent="space-between">
+                <Text fontSize="28px" fontWeight="500">
+                  95 USDC
+                </Text>
+                <Text fontSize="28px" fontWeight="500">
+                  $95
+                </Text>
+              </Flex>
+              <Input mt={2} placeholder="To Address" />
+              <Flex mt={2} dir="row" justifyContent="space-between">
+                <Input placeholder="Amount" mr={4} />
+                <Button colorScheme="teal" width="150px" variant="outline">
+                  Transfer
+                </Button>
+              </Flex>
+            </Box>
+          </VStack>
+        </VStack>
+      </Flex>
     </div>
-  )
-}
-
-export default Home
+  );
+};
+// min-height: 100vh;
+// padding: 4rem 0;
+// flex: 1;
+// display: flex;
+// flex-direction: column;
+// justify-content: center;
+// align-items: center;
+export default Home;
