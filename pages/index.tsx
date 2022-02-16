@@ -23,6 +23,7 @@ import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 const WRAPPED_SOL_SPL_ADDRESS = 'So11111111111111111111111111111111111111112';
 const DEVNET_USDC_SPL_PUBLIC_KEY = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
 const MAINNET_USDC_SPL_PUBLIC_KEY = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+const USD_PER_SPL_USDC = 1000000; // USDC has 6 decimal places
 
 const Home: NextPage = () => {
   // account and network
@@ -46,10 +47,11 @@ const Home: NextPage = () => {
 
   const changeNetwork = (e: any) => {
     setNetwork(e.target.value);
-    if (account) refreshBalances(account);
+
+    if (account) refreshBalances(account, e.target.value);
   };
 
-  const refreshBalances = async (account: Keypair | null) => {
+  const refreshBalances = async (account: Keypair | null, network: Cluster) => {
     if (!account) return;
 
     try {
@@ -66,7 +68,9 @@ const Home: NextPage = () => {
       console.log('sol balance', balance / LAMPORTS_PER_SOL);
 
       // usdc token account
-      const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, { mint: DEVNET_USDC_SPL_PUBLIC_KEY });
+      console.log('network', network);
+      const usdcSPLTokenPublicKey = network === 'mainnet-beta' ? MAINNET_USDC_SPL_PUBLIC_KEY : DEVNET_USDC_SPL_PUBLIC_KEY;
+      const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, { mint: usdcSPLTokenPublicKey });
       console.log('tokenAccounts', tokenAccounts);
 
       console.log(tokenAccounts.value[0].pubkey);
@@ -95,6 +99,7 @@ const Home: NextPage = () => {
     const signers = [{ publicKey: account.publicKey, secretKey: account.secretKey }];
     const txnSignature = await sendAndConfirmTransaction(connection, transaction, signers);
 
+    refreshBalances(account, network);
     toast({
       position: 'top-right',
       title: 'Transfer Complete',
@@ -114,17 +119,26 @@ const Home: NextPage = () => {
 
     const toAccountPublicKey = new PublicKey(usdcTransferTo);
 
-    const usdcSPLToken = new Token(connection, DEVNET_USDC_SPL_PUBLIC_KEY, TOKEN_PROGRAM_ID, account);
+    const usdcSPLTokenPublicKey = network === 'mainnet-beta' ? MAINNET_USDC_SPL_PUBLIC_KEY : DEVNET_USDC_SPL_PUBLIC_KEY;
+    const usdcSPLToken = new Token(connection, usdcSPLTokenPublicKey, TOKEN_PROGRAM_ID, account);
 
     const fromTokenAccount = await usdcSPLToken.getOrCreateAssociatedAccountInfo(account.publicKey);
     const toTokenAccount = await usdcSPLToken.getOrCreateAssociatedAccountInfo(toAccountPublicKey);
 
     const transaction = new Transaction().add(
-      Token.createTransferInstruction(TOKEN_PROGRAM_ID, fromTokenAccount.address, toTokenAccount.address, account.publicKey, [], usdcTransferAmount)
+      Token.createTransferInstruction(
+        TOKEN_PROGRAM_ID,
+        fromTokenAccount.address,
+        toTokenAccount.address,
+        account.publicKey,
+        [],
+        usdcTransferAmount * USD_PER_SPL_USDC
+      )
     );
 
     const txnSignature = await sendAndConfirmTransaction(connection, transaction, [account]);
 
+    refreshBalances(account, network);
     toast({
       position: 'top-right',
       title: 'Transfer Complete',
@@ -158,7 +172,7 @@ const Home: NextPage = () => {
     // // Update state with keypair
     setAccount(accountKeypair);
 
-    refreshBalances(accountKeypair);
+    refreshBalances(accountKeypair, network);
   }, []);
 
   return (
@@ -181,7 +195,6 @@ const Home: NextPage = () => {
           <Select defaultValue={'devnet'} width="160px" height="36px" textAlign={'center'} onChange={changeNetwork}>
             <option value="mainnet-beta">mainnet-beta</option>
             <option value="devnet">devnet</option>
-            <option value="testnet">testnet</option>
           </Select>
           <Text fontSize={'5xl'} fontWeight={'600'}>
             ${(solPrice * solBalance + usdcBalance).toFixed(2)}
@@ -191,6 +204,7 @@ const Home: NextPage = () => {
             includeMargin={false}
             value={address}
             size={380}
+            fgColor="#4e4e4e"
             imageSettings={{
               width: 90,
               height: 90,
@@ -244,11 +258,4 @@ const Home: NextPage = () => {
     </div>
   );
 };
-// min-height: 100vh;
-// padding: 4rem 0;
-// flex: 1;
-// display: flex;
-// flex-direction: column;
-// justify-content: center;
-// align-items: center;
 export default Home;
