@@ -1,5 +1,26 @@
-import { Box, Flex, VStack, Text, Select, HStack, Button, Input, IconButton, useClipboard, useToast } from '@chakra-ui/react';
-import { CopyIcon, CheckIcon } from '@chakra-ui/icons';
+import {
+  Box,
+  Flex,
+  VStack,
+  Text,
+  Select,
+  Button,
+  Input,
+  IconButton,
+  useClipboard,
+  useToast,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Divider,
+  Code,
+} from '@chakra-ui/react';
+import { CopyIcon, CheckIcon, SettingsIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
@@ -29,6 +50,7 @@ const Home: NextPage = () => {
   // account and network
   const [account, setAccount] = useState<Keypair>();
   const [network, setNetwork] = useState<Cluster>('devnet');
+  const [accountMnemonic, setAccountMnemonic] = useState<string>();
 
   // balances
   const [solBalance, setSolBalance] = useState<number>(0);
@@ -38,12 +60,22 @@ const Home: NextPage = () => {
   // ui state
   const address = account ? account.publicKey.toString() : '';
   const { hasCopied, onCopy } = useClipboard(address);
+
+  const BASE_URL = 'http://localhost:3000';
+  const walletSeedLink = encodeURI(`${BASE_URL}?mnemonic=${accountMnemonic}`);
+  const { hasCopied: hasCopiedSeedLink, onCopy: onCopySeedLink } = useClipboard(walletSeedLink);
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isCfmOpen, onOpen: onCfmOpen, onClose: onCfmClose } = useDisclosure();
 
   const [solTransferTo, setSolTransferTo] = useState();
   const [solTransferAmount, setSolTransferAmount] = useState<number>(0);
   const [usdcTransferTo, setUsdcTransferTo] = useState();
   const [usdcTransferAmount, setUsdcTransferAmount] = useState<number>(0);
+
+  // Modal UI
+  const [showSeed, setShowSeed] = useState<boolean>(false);
+  const [mnemonicToImport, setMnemonicToImport] = useState('');
 
   const changeNetwork = (e: any) => {
     setNetwork(e.target.value);
@@ -81,6 +113,17 @@ const Home: NextPage = () => {
       console.log('error', error);
       return 0;
     }
+  };
+
+  const generateNewAccount = () => {
+    const newMnemonic = Bip39.generateMnemonic();
+    window.localStorage.setItem('mnemonic', newMnemonic);
+    window.location.assign(BASE_URL);
+  };
+
+  const importAccountFromMnemonic = () => {
+    window.localStorage.setItem('mnemonic', mnemonicToImport);
+    window.location.assign(BASE_URL);
   };
 
   const transferSol = async () => {
@@ -150,10 +193,19 @@ const Home: NextPage = () => {
   };
 
   useEffect(() => {
-    let mnemonic = localStorage.getItem('mnemonic');
+    let mnemonic = null;
+    const params = new URLSearchParams(window.location.search);
 
-    // On page load check if theres a mnemonic/keypair saved in local storage
-    // if no, generate a mnemonic and save to local storage
+    // On page load check if theres a mnemonic in the query params
+    if (params.get('mnemonic')) {
+      mnemonic = params.get('mnemonic');
+    }
+    // secondarily, check if theres mnemonic in local storage
+    else if (localStorage.getItem('mnemonic')) {
+      mnemonic = localStorage.getItem('mnemonic');
+    }
+
+    // if both options are null, i.e. on first load, generate a new mnemonic
     if (mnemonic === null) {
       mnemonic = Bip39.generateMnemonic();
       // Save to localstorage so that it persists across refreshes
@@ -171,6 +223,7 @@ const Home: NextPage = () => {
 
     // // Update state with keypair
     setAccount(accountKeypair);
+    setAccountMnemonic(mnemonic);
 
     refreshBalances(accountKeypair, network);
   }, []);
@@ -178,7 +231,7 @@ const Home: NextPage = () => {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Burner Wallet</title>
+        <title>Burner Wallet for Solana</title>
         <meta name="description" content="Extremely hot burner wallet for Solana" />
         <link
           rel="icon"
@@ -187,11 +240,11 @@ const Home: NextPage = () => {
       </Head>
 
       <Flex flexDir={'column'}>
-        {/* <Flex flexDir={'row'} justifyContent={'space-between'}>
-          <Text>TempWallet</Text>
-          <Text>Wallet</Text>
-        </Flex> */}
-        <VStack mt={16} alignContent={'center'} justifyContent="center">
+        <Flex mt={3} flexDir={'row'} justifyContent={'space-between'} alignItems="center">
+          <Text fontSize="4xl">🔥</Text>
+          <IconButton onClick={onOpen} aria-label="Wallet Settings" icon={<SettingsIcon fontSize="28px" />} variant="ghost" size="2xl" />
+        </Flex>
+        <VStack alignContent={'center'} justifyContent="center">
           <Select defaultValue={'devnet'} width="160px" height="36px" textAlign={'center'} onChange={changeNetwork}>
             <option value="mainnet-beta">mainnet-beta</option>
             <option value="devnet">devnet</option>
@@ -203,7 +256,7 @@ const Home: NextPage = () => {
             level={'H'}
             includeMargin={false}
             value={address}
-            size={380}
+            size={360}
             fgColor="#4e4e4e"
             imageSettings={{
               width: 90,
@@ -212,13 +265,13 @@ const Home: NextPage = () => {
               src: '/logo.svg',
             }}
           />
-          <Text width="380px" fontSize="20px" textAlign="center">
+          <Text width="360px" fontSize="20px" textAlign="center">
             {address}
-            <IconButton onClick={onCopy} aria-label="Search database" icon={hasCopied ? <CheckIcon /> : <CopyIcon />} variant="unstyled" size="xs" />
+            <IconButton onClick={onCopy} aria-label="Copy Address" icon={hasCopied ? <CheckIcon /> : <CopyIcon />} variant="unstyled" size="xs" />
           </Text>
 
-          <VStack>
-            <Box width="380px" padding="1rem 2rem" borderRadius="lg">
+          <VStack paddingX={4}>
+            <Box width="360px" padding="1rem 2rem" borderRadius="lg">
               <Flex dir="row" justifyContent="space-between">
                 <Text fontSize="28px" fontWeight="500">
                   {solBalance} SOL
@@ -235,7 +288,7 @@ const Home: NextPage = () => {
                 </Button>
               </Flex>
             </Box>
-            <Box width="380px" padding="1rem 2rem" borderRadius="lg">
+            <Box width="360px" padding="1rem 2rem" borderRadius="lg">
               <Flex dir="row" justifyContent="space-between">
                 <Text fontSize="28px" fontWeight="500">
                   {usdcBalance} USDC
@@ -255,6 +308,83 @@ const Home: NextPage = () => {
           </VStack>
         </VStack>
       </Flex>
+
+      {/* Wallet Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Wallet Settings</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack mb="32px" spacing={4}>
+              <Flex width="100%" justifyContent="space-between" alignItems="center">
+                <Text fontSize={'2xl'}>Current Wallet</Text>
+                <Text fontSize={'2xl'} fontWeight={'600'}>
+                  ${(solPrice * solBalance + usdcBalance).toFixed(2)}
+                </Text>
+              </Flex>
+              <Flex width="100%" justifyContent="center" alignItems="center">
+                {showSeed ? (
+                  <Flex flexDirection={'column'} alignItems="center">
+                    <Button colorScheme="yellow" variant="solid" width={'150px'} leftIcon={<WarningTwoIcon />} onClick={() => setShowSeed(false)}>
+                      Hide Seed
+                    </Button>
+                    <Code my={4} padding={'20px'} fontSize="md" borderRadius={'2xl'}>
+                      {accountMnemonic}
+                    </Code>
+                    <Button colorScheme="blue" variant="outline" onClick={onCopySeedLink}>
+                      {hasCopiedSeedLink ? 'Copied' : 'Copy Link with Seed'}
+                    </Button>
+                  </Flex>
+                ) : (
+                  <Button colorScheme="yellow" variant="solid" leftIcon={<WarningTwoIcon />} onClick={() => setShowSeed(true)}>
+                    Reveal Seed
+                  </Button>
+                )}
+              </Flex>
+              <Divider />
+              <Text fontSize={'2xl'}>Import / Generate Account</Text>
+              <Text fontSize={'lg'} textAlign="center">
+                Make sure you've saved your previous wallet seed phrase or it will be lost forever!!
+              </Text>
+
+              <Input mt={2} placeholder="Seed Phrase" onChange={(event: any) => setMnemonicToImport(event.target.value)} />
+              <Button colorScheme="blue" variant="outline" onClick={importAccountFromMnemonic}>
+                Import
+              </Button>
+              <Divider />
+              <Button colorScheme="red" variant="solid" onClick={onCfmOpen}>
+                Generate new account
+              </Button>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Confirmation Modal for import/regenerating seed */}
+      <Modal isOpen={isCfmOpen} onClose={onCfmClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Generate new account</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text fontSize={'2xl'} textAlign="left">
+              Make sure you've saved your previous wallet seed phrase or it will be lost forever!!
+            </Text>
+            <Code mt={4} padding={'20px'} fontSize="md" borderRadius={'2xl'}>
+              {accountMnemonic}
+            </Code>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="red" mr={3} onClick={generateNewAccount}>
+              Yes erase it
+            </Button>
+            <Button variant="ghost" onClick={onCfmClose}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
