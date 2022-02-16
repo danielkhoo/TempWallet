@@ -1,29 +1,48 @@
-import { Box, Flex, VStack, Text, Select, HStack, Button, Input, IconButton, useClipboard } from '@chakra-ui/react';
+import { Box, Flex, VStack, Text, Select, HStack, Button, Input, IconButton, useClipboard, useToast } from '@chakra-ui/react';
 import { CopyIcon, CheckIcon } from '@chakra-ui/icons';
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import QR from 'qrcode.react';
 import styles from '../styles/Home.module.css';
 import * as Bip39 from 'bip39';
 import axios from 'axios';
-import { Cluster, clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import {
+  Cluster,
+  clusterApiUrl,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
+} from '@solana/web3.js';
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const WRAPPED_SOL_SPL_ADDRESS = 'So11111111111111111111111111111111111111112';
 const DEVNET_USDC_SPL_PUBLIC_KEY = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
 const MAINNET_USDC_SPL_PUBLIC_KEY = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
 const Home: NextPage = () => {
+  // account and network
   const [account, setAccount] = useState<Keypair>();
   const [network, setNetwork] = useState<Cluster>('devnet');
 
+  // balances
   const [solBalance, setSolBalance] = useState<number>(0);
   const [solPrice, setSolPrice] = useState<number>(0);
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
 
+  // ui state
   const address = account ? account.publicKey.toString() : '';
   const { hasCopied, onCopy } = useClipboard(address);
+  const toast = useToast();
+
+  const [solTransferTo, setSolTransferTo] = useState();
+  const [solTransferAmount, setSolTransferAmount] = useState<number>(0);
+  const [usdcTransferTo, setUsdcTransferTo] = useState();
+  const [usdcTransferAmount, setUsdcTransferAmount] = useState<number>(0);
 
   const changeNetwork = (e: any) => {
     setNetwork(e.target.value);
@@ -31,7 +50,7 @@ const Home: NextPage = () => {
   };
 
   const refreshBalances = async (account: Keypair | null) => {
-    if (!account) return 0;
+    if (!account) return;
 
     try {
       const connection = new Connection(clusterApiUrl(network), 'confirmed');
@@ -58,6 +77,62 @@ const Home: NextPage = () => {
       console.log('error', error);
       return 0;
     }
+  };
+
+  const transferSol = async () => {
+    if (!account) return;
+    if (!solTransferTo) return;
+    if (solTransferAmount === 0) return;
+
+    const connection = new Connection(clusterApiUrl(network), 'confirmed');
+    const instructions = SystemProgram.transfer({
+      fromPubkey: account.publicKey,
+      toPubkey: new PublicKey(solTransferTo),
+      lamports: solTransferAmount * LAMPORTS_PER_SOL,
+    });
+    const transaction = new Transaction().add(instructions);
+
+    const signers = [{ publicKey: account.publicKey, secretKey: account.secretKey }];
+    const txnSignature = await sendAndConfirmTransaction(connection, transaction, signers);
+
+    toast({
+      position: 'top-right',
+      title: 'Transfer Complete',
+      description: `Sent ${solTransferAmount} SOL to ${solTransferTo}. Transaction: ${txnSignature}`,
+      status: 'success',
+      duration: 4000,
+      isClosable: true,
+    });
+  };
+
+  const transferUsdc = async () => {
+    if (!account) return;
+    if (!usdcTransferTo) return;
+    if (usdcTransferAmount === 0) return;
+
+    const connection = new Connection(clusterApiUrl(network), 'confirmed');
+
+    const toAccountPublicKey = new PublicKey(usdcTransferTo);
+
+    const usdcSPLToken = new Token(connection, DEVNET_USDC_SPL_PUBLIC_KEY, TOKEN_PROGRAM_ID, account);
+
+    const fromTokenAccount = await usdcSPLToken.getOrCreateAssociatedAccountInfo(account.publicKey);
+    const toTokenAccount = await usdcSPLToken.getOrCreateAssociatedAccountInfo(toAccountPublicKey);
+
+    const transaction = new Transaction().add(
+      Token.createTransferInstruction(TOKEN_PROGRAM_ID, fromTokenAccount.address, toTokenAccount.address, account.publicKey, [], usdcTransferAmount)
+    );
+
+    const txnSignature = await sendAndConfirmTransaction(connection, transaction, [account]);
+
+    toast({
+      position: 'top-right',
+      title: 'Transfer Complete',
+      description: `Sent ${usdcTransferAmount} USDC to ${usdcTransferTo}. Transaction: ${txnSignature}`,
+      status: 'success',
+      duration: 4000,
+      isClosable: true,
+    });
   };
 
   useEffect(() => {
@@ -138,10 +213,10 @@ const Home: NextPage = () => {
                   ${(solPrice * solBalance).toFixed(2)}
                 </Text>
               </Flex>
-              <Input mt={2} placeholder="To Address" />
+              <Input mt={2} placeholder="To Address" onChange={(event: any) => setSolTransferTo(event.target.value)} />
               <Flex mt={2} dir="row" justifyContent="space-between">
-                <Input placeholder="Amount" mr={4} />
-                <Button colorScheme="teal" width="150px" variant="outline">
+                <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setSolTransferAmount(event.target.value)} />
+                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferSol}>
                   Transfer
                 </Button>
               </Flex>
@@ -155,10 +230,10 @@ const Home: NextPage = () => {
                   ${usdcBalance.toFixed(2)}
                 </Text>
               </Flex>
-              <Input mt={2} placeholder="To Address" />
+              <Input mt={2} placeholder="To Address" onChange={(event: any) => setUsdcTransferTo(event.target.value)} />
               <Flex mt={2} dir="row" justifyContent="space-between">
-                <Input placeholder="Amount" mr={4} />
-                <Button colorScheme="teal" width="150px" variant="outline">
+                <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setUsdcTransferAmount(event.target.value)} />
+                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferUsdc}>
                   Transfer
                 </Button>
               </Flex>
