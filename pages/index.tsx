@@ -61,7 +61,8 @@ const Home: NextPage = () => {
   const address = account ? account.publicKey.toString() : '';
   const { hasCopied, onCopy } = useClipboard(address);
 
-  const BASE_URL = 'http://localhost:3000';
+  // const BASE_URL = 'http://localhost:3000/';
+  const BASE_URL = 'https://tempwallet.xyz';
   const walletSeedLink = encodeURI(`${BASE_URL}?mnemonic=${accountMnemonic}`);
   const { hasCopied: hasCopiedSeedLink, onCopy: onCopySeedLink } = useClipboard(walletSeedLink);
   const toast = useToast();
@@ -121,8 +122,8 @@ const Home: NextPage = () => {
     window.location.assign(BASE_URL);
   };
 
-  const importAccountFromMnemonic = () => {
-    window.localStorage.setItem('mnemonic', mnemonicToImport);
+  const importAccountFromMnemonic = (mnemonic: string) => {
+    window.localStorage.setItem('mnemonic', mnemonic);
     window.location.assign(BASE_URL);
   };
 
@@ -195,10 +196,10 @@ const Home: NextPage = () => {
   useEffect(() => {
     let mnemonic = null;
     const params = new URLSearchParams(window.location.search);
-
+    mnemonic = params.get('mnemonic');
     // On page load check if theres a mnemonic in the query params
-    if (params.get('mnemonic')) {
-      mnemonic = params.get('mnemonic');
+    if (mnemonic !== null) {
+      importAccountFromMnemonic(mnemonic);
     }
     // secondarily, check if theres mnemonic in local storage
     else if (localStorage.getItem('mnemonic')) {
@@ -349,7 +350,7 @@ const Home: NextPage = () => {
               </Text>
 
               <Input mt={2} placeholder="Seed Phrase" onChange={(event: any) => setMnemonicToImport(event.target.value)} />
-              <Button colorScheme="blue" variant="outline" onClick={importAccountFromMnemonic}>
+              <Button colorScheme="blue" variant="outline" onClick={() => importAccountFromMnemonic(mnemonicToImport)}>
                 Import
               </Button>
               <Divider />
