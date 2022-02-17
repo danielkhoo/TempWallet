@@ -19,12 +19,15 @@ import {
   ModalCloseButton,
   Divider,
   Code,
+  InputGroup,
+  InputRightElement,
 } from '@chakra-ui/react';
 import { CopyIcon, CheckIcon, SettingsIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import QR from 'qrcode.react';
+import { QrReader } from 'react-qr-reader';
 import * as Bip39 from 'bip39';
 import axios from 'axios';
 import {
@@ -67,10 +70,11 @@ const Home: NextPage = () => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isCfmOpen, onOpen: onCfmOpen, onClose: onCfmClose } = useDisclosure();
+  const { isOpen: isScannerOpen, onOpen: onScannerOpen, onClose: onScannerClose } = useDisclosure();
 
-  const [solTransferTo, setSolTransferTo] = useState();
+  const [solTransferTo, setSolTransferTo] = useState<string>();
   const [solTransferAmount, setSolTransferAmount] = useState<number>(0);
-  const [usdcTransferTo, setUsdcTransferTo] = useState();
+  const [usdcTransferTo, setUsdcTransferTo] = useState<string>();
   const [usdcTransferAmount, setUsdcTransferAmount] = useState<number>(0);
 
   // Modal UI
@@ -240,7 +244,7 @@ const Home: NextPage = () => {
         <link rel="apple-touch-icon" href="ios.png" />
       </Head>
 
-      <Flex flexDir={'column'} paddingX="24px" mt={4}>
+      <Flex flexDir={'column'} paddingX="24px" my={4}>
         <Flex flexDir={'row'} justifyContent={'space-between'} alignItems="center">
           <Text fontSize="4xl">🔥</Text>
           <Select defaultValue={'devnet'} width="160px" height="42px" textAlign={'center'} onChange={changeNetwork}>
@@ -281,7 +285,20 @@ const Home: NextPage = () => {
                   ${(solPrice * solBalance).toFixed(2)}
                 </Text>
               </Flex>
-              <Input mt={2} placeholder="To Address" onChange={(event: any) => setSolTransferTo(event.target.value)} />
+              <InputGroup mt={2}>
+                <Input
+                  placeholder="To Address"
+                  maxLength={44}
+                  value={solTransferTo}
+                  onChange={(event: any) => setSolTransferTo(event.target.value)}
+                />
+                <InputRightElement width="3rem">
+                  <Button size="sm" onClick={onScannerOpen}>
+                    QR
+                  </Button>
+                </InputRightElement>
+              </InputGroup>
+
               <Flex mt={2} dir="row" justifyContent="space-between">
                 <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setSolTransferAmount(event.target.value)} />
                 <Button colorScheme="teal" width="150px" variant="outline" onClick={transferSol}>
@@ -298,7 +315,20 @@ const Home: NextPage = () => {
                   ${usdcBalance.toFixed(2)}
                 </Text>
               </Flex>
-              <Input mt={2} placeholder="To Address" onChange={(event: any) => setUsdcTransferTo(event.target.value)} />
+              <InputGroup mt={2}>
+                <Input
+                  maxLength={44}
+                  placeholder="To Address"
+                  value={usdcTransferTo}
+                  onChange={(event: any) => setUsdcTransferTo(event.target.value)}
+                />
+                <InputRightElement width="3rem">
+                  <Button size="sm" onClick={onScannerOpen}>
+                    QR
+                  </Button>
+                </InputRightElement>
+              </InputGroup>
+
               <Flex mt={2} dir="row" justifyContent="space-between">
                 <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setUsdcTransferAmount(event.target.value)} />
                 <Button colorScheme="teal" width="150px" variant="outline" onClick={transferUsdc}>
@@ -309,9 +339,32 @@ const Home: NextPage = () => {
           </VStack>
         </VStack>
       </Flex>
-      <Flex flexDir={'row'} justifyContent={'space-between'} alignItems="center" backgroundColor={'gray.100'} padding={'4px 24px'}>
+      <Flex flexDir={'row'} justifyContent={'center'} alignItems="center" backgroundColor={'gray.100'} padding={'4px 24px'}>
         <Text>⚠️ TempWallet is hot browser wallet meant for small change, payments and development.</Text>
       </Flex>
+      {/* Scanner */}
+      <Modal closeOnOverlayClick={true} isOpen={isScannerOpen} onClose={onScannerClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <QrReader
+            onResult={(result, error) => {
+              if (!!result) {
+                const text = result.getText();
+                if (text && text.length === 44) {
+                  console.log('text', text);
+                  setSolTransferTo(text);
+                  setUsdcTransferTo(text);
+                  onScannerClose();
+                }
+              }
+              // if (!!error) {console.log(error);}
+            }}
+            constraints={{ facingMode: 'environment' }}
+            // videoContainerStyle={{ width: '400px', height: '400px' }}
+            videoContainerStyle={{ position: 'absolute', left: 0, right: 0, top: 0, margin: 'auto' }}
+          />
+        </ModalContent>
+      </Modal>
       {/* Wallet Modal */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
