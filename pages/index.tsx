@@ -25,7 +25,6 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import QR from 'qrcode.react';
-import styles from '../styles/Home.module.css';
 import * as Bip39 from 'bip39';
 import axios from 'axios';
 import {
@@ -230,34 +229,35 @@ const Home: NextPage = () => {
   }, []);
 
   return (
-    <div className={styles.container}>
+    <div>
       <Head>
-        <title>Burner Wallet for Solana</title>
+        <title>TempWallet</title>
         <meta name="description" content="Extremely hot burner wallet for Solana" />
         <link
           rel="icon"
           href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>"
         />
+        <link rel="apple-touch-icon" href="ios.png" />
       </Head>
 
-      <Flex flexDir={'column'}>
-        <Flex mt={3} flexDir={'row'} justifyContent={'space-between'} alignItems="center">
+      <Flex flexDir={'column'} paddingX="24px" mt={4}>
+        <Flex flexDir={'row'} justifyContent={'space-between'} alignItems="center">
           <Text fontSize="4xl">🔥</Text>
-          <IconButton onClick={onOpen} aria-label="Wallet Settings" icon={<SettingsIcon fontSize="28px" />} variant="ghost" size="2xl" />
-        </Flex>
-        <VStack alignContent={'center'} justifyContent="center">
-          <Select defaultValue={'devnet'} width="160px" height="36px" textAlign={'center'} onChange={changeNetwork}>
+          <Select defaultValue={'devnet'} width="160px" height="42px" textAlign={'center'} onChange={changeNetwork}>
             <option value="mainnet-beta">mainnet-beta</option>
             <option value="devnet">devnet</option>
           </Select>
-          <Text fontSize={'5xl'} fontWeight={'600'}>
+          <IconButton onClick={onOpen} aria-label="Wallet Settings" icon={<SettingsIcon fontSize="28px" />} variant="ghost" size="2xl" />
+        </Flex>
+        <VStack alignContent={'center'} justifyContent="center">
+          <Text fontSize={'5xl'} fontWeight={'600'} mt={0}>
             ${(solPrice * solBalance + usdcBalance).toFixed(2)}
           </Text>
           <QR
             level={'H'}
             includeMargin={false}
             value={address}
-            size={360}
+            size={330}
             fgColor="#4e4e4e"
             imageSettings={{
               width: 90,
@@ -266,9 +266,9 @@ const Home: NextPage = () => {
               src: '/logo.svg',
             }}
           />
-          <Text width="360px" fontSize="20px" textAlign="center">
+          <Text width="330px" fontSize="20px" textAlign="center">
             {address}
-            <IconButton onClick={onCopy} aria-label="Copy Address" icon={hasCopied ? <CheckIcon /> : <CopyIcon />} variant="unstyled" size="xs" />
+            <IconButton onClick={onCopy} aria-label="Copy Address" icon={hasCopied ? <CheckIcon /> : <CopyIcon />} variant="unstyled" size="sm" />
           </Text>
 
           <VStack paddingX={4}>
@@ -309,18 +309,20 @@ const Home: NextPage = () => {
           </VStack>
         </VStack>
       </Flex>
-
+      <Flex flexDir={'row'} justifyContent={'space-between'} alignItems="center" backgroundColor={'gray.100'} padding={'4px 24px'}>
+        <Text>⚠️ TempWallet is hot browser wallet meant for small change, payments and development.</Text>
+      </Flex>
       {/* Wallet Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Wallet Settings</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <VStack mb="32px" spacing={4}>
+            <VStack mb="24px" spacing={4}>
               <Flex width="100%" justifyContent="space-between" alignItems="center">
-                <Text fontSize={'2xl'}>Current Wallet</Text>
-                <Text fontSize={'2xl'} fontWeight={'600'}>
+                <Text fontSize={'xl'}>Current Wallet</Text>
+                <Text fontSize={'xl'} fontWeight={'600'}>
                   ${(solPrice * solBalance + usdcBalance).toFixed(2)}
                 </Text>
               </Flex>
@@ -344,8 +346,8 @@ const Home: NextPage = () => {
                 )}
               </Flex>
               <Divider />
-              <Text fontSize={'2xl'}>Import / Generate Account</Text>
-              <Text fontSize={'lg'} textAlign="center">
+              <Text fontSize={'xl'}>Import / Generate Account</Text>
+              <Text fontSize={'md'} textAlign="center">
                 Make sure you have saved your previous wallet seed phrase or it will be lost forever!!
               </Text>
 
