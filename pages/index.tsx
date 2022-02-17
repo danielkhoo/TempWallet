@@ -345,7 +345,7 @@ const Home: NextPage = () => {
               <Divider />
               <Text fontSize={'2xl'}>Import / Generate Account</Text>
               <Text fontSize={'lg'} textAlign="center">
-                Make sure you've saved your previous wallet seed phrase or it will be lost forever!!
+                Make sure you have saved your previous wallet seed phrase or it will be lost forever!!
               </Text>
 
               <Input mt={2} placeholder="Seed Phrase" onChange={(event: any) => setMnemonicToImport(event.target.value)} />
@@ -369,7 +369,7 @@ const Home: NextPage = () => {
           <ModalCloseButton />
           <ModalBody>
             <Text fontSize={'2xl'} textAlign="left">
-              Make sure you've saved your previous wallet seed phrase or it will be lost forever!!
+              Make sure you have saved your previous wallet seed phrase or it will be lost forever!!
             </Text>
             <Code mt={4} padding={'20px'} fontSize="md" borderRadius={'2xl'}>
               {accountMnemonic}
