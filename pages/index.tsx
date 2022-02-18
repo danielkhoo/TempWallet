@@ -132,6 +132,15 @@ const Home: NextPage = () => {
     window.location.assign(BASE_URL);
   };
 
+  const devnetAirdrop = async () => {
+    if (!account) return;
+    if (network !== 'devnet') return;
+    const connection = new Connection(clusterApiUrl(network), 'confirmed');
+    const confirmation = await connection.requestAirdrop(account.publicKey, LAMPORTS_PER_SOL);
+    await connection.confirmTransaction(confirmation, 'confirmed');
+    refreshBalances(account, network);
+  };
+
   const transferSol = async () => {
     if (!account) return;
     if (!solTransferTo) return;
@@ -152,7 +161,7 @@ const Home: NextPage = () => {
     toast({
       position: 'top-right',
       title: 'Transfer Complete',
-      description: `Sent ${solTransferAmount} SOL to ${solTransferTo}. Transaction: ${txnSignature}`,
+      description: <Text wordBreak={'break-word'}>{`Sent ${solTransferAmount} SOL to ${solTransferTo}. Transaction: ${txnSignature}`}</Text>,
       status: 'success',
       duration: 4000,
       isClosable: true,
@@ -191,7 +200,7 @@ const Home: NextPage = () => {
     toast({
       position: 'top-right',
       title: 'Transfer Complete',
-      description: `Sent ${usdcTransferAmount} USDC to ${usdcTransferTo}. Transaction: ${txnSignature}`,
+      description: <Text wordBreak={'break-word'}>{`Sent ${usdcTransferAmount} USDC to ${usdcTransferTo}. Transaction: ${txnSignature}`}</Text>,
       status: 'success',
       duration: 4000,
       isClosable: true,
@@ -299,9 +308,13 @@ const Home: NextPage = () => {
         </Flex>
         <VStack alignContent={'center'} justifyContent="center">
           <Text fontSize={'5xl'} fontWeight={'600'} mt={0}>
-            ${(solPrice * solBalance + usdcBalance).toFixed(2)}
+            ${(solPrice * solBalance + usdcBalance).toFixed(2)}{' '}
+            {network === 'devnet' && solBalance === 0 && (
+              <Button size="xs" onClick={devnetAirdrop}>
+                Devnet Airdrop
+              </Button>
+            )}
           </Text>
-
           <QR
             level={'H'}
             includeMargin={false}
