@@ -20,12 +20,11 @@ import {
   Divider,
   Code,
   InputGroup,
-  InputRightElement,
 } from '@chakra-ui/react';
 import { CopyIcon, CheckIcon, SettingsIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import QR from 'qrcode.react';
 import { QrReader } from 'react-qr-reader';
 import * as Bip39 from 'bip39';
@@ -42,7 +41,7 @@ import {
   Transaction,
 } from '@solana/web3.js';
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { encodeURL, createQR, parseURL, ParsedURL } from '@solana/pay';
+import { encodeURL, createQR, parseURL, ParsedURL, createTransaction } from '@solana/pay';
 import BigNumber from 'bignumber.js';
 
 const WRAPPED_SOL_SPL_ADDRESS = 'So11111111111111111111111111111111111111112';
@@ -65,8 +64,8 @@ const Home: NextPage = () => {
   const address = account ? account.publicKey.toString() : '';
   const { hasCopied, onCopy } = useClipboard(address);
 
-  const BASE_URL = 'http://localhost:3000/';
-  // const BASE_URL = 'https://tempwallet.xyz';
+  // const BASE_URL = 'http://localhost:3000/';
+  const BASE_URL = 'https://tempwallet.xyz';
   const walletSeedLink = encodeURI(`${BASE_URL}?mnemonic=${accountMnemonic}`);
   const { hasCopied: hasCopiedSeedLink, onCopy: onCopySeedLink } = useClipboard(walletSeedLink);
   const toast = useToast();
@@ -199,8 +198,39 @@ const Home: NextPage = () => {
     });
   };
 
+  const sendSolanaPayTxn = async () => {
+    if (!account || !solanaPayData) return;
+
+    const connection = new Connection(clusterApiUrl(network), 'confirmed');
+    const { recipient, amount, splToken, reference, label, message, memo } = solanaPayData;
+    console.log('payer', account.publicKey.toBase58());
+    const payer = account.publicKey;
+    const payerInfo = await connection.getAccountInfo(payer);
+    console.log('payerInfo', payerInfo);
+    const transaction = await createTransaction(connection, payer, recipient, amount as BigNumber, {
+      reference,
+      memo,
+    });
+
+    const signers = [{ publicKey: account.publicKey, secretKey: account.secretKey }];
+    const txnSignature = await sendAndConfirmTransaction(connection, transaction, signers);
+
+    refreshBalances(account, network);
+
+    const displayAmount = (solanaPayData.amount!.toNumber() / LAMPORTS_PER_SOL).toFixed(4);
+    toast({
+      position: 'top-right',
+      title: 'Solana Pay Complete',
+      description: <Text wordBreak={'break-word'}>{`Sent ${displayAmount} SOL to ${recipient.toBase58()}. Transaction: ${txnSignature}`}</Text>,
+      status: 'success',
+      duration: 4000,
+      isClosable: true,
+    });
+    onSolPayClose();
+  };
+
   const TEST_SOLANA_PAY_DATA = encodeURL({
-    amount: new BigNumber(100000),
+    amount: new BigNumber(0.1),
     label: 'Solana Hacker House Singapore',
     memo: 'SHHSG#4098',
     message: 'Solana Hacker House Singapore - Hotdog - #00001',
@@ -208,23 +238,7 @@ const Home: NextPage = () => {
     reference: [new Keypair().publicKey],
     splToken: undefined,
   });
-  const [solanaPayStatus, setSolanaPayStatus] = useState();
-  const [showSolanaPay, setShowSolanaPay] = useState<boolean>(false);
   const [solanaPayData, setSolanaPayData] = useState<ParsedURL>();
-  const ref = useRef(null);
-
-  const getSolanaPayUrl = (account: Keypair) => {
-    const recipient = account.publicKey;
-    const amount = new BigNumber(1);
-    const reference = new Keypair().publicKey;
-    const label = 'Solana Hacker House Singapore';
-    const message = 'Solana Hacker House Singapore - Hotdog - #00001';
-    const memo = 'SHHSG#4098';
-    console.log(encodeURL({ recipient, amount, reference, label, message, memo }));
-    return encodeURL({ recipient, amount, reference, label, message, memo });
-  };
-
-  let qrCode: any = null;
 
   useEffect(() => {
     let mnemonic = null;
@@ -260,12 +274,6 @@ const Home: NextPage = () => {
     setAccountMnemonic(mnemonic);
 
     refreshBalances(accountKeypair, network);
-
-    // Add the solana pay QRCode
-    qrCode = createQR(getSolanaPayUrl(accountKeypair), 400);
-    if (qrCode && ref.current) {
-      qrCode.append(ref.current);
-    }
   }, []);
 
   return (
@@ -293,27 +301,21 @@ const Home: NextPage = () => {
           <Text fontSize={'5xl'} fontWeight={'600'} mt={0}>
             ${(solPrice * solBalance + usdcBalance).toFixed(2)}
           </Text>
-          <Button size="xs" onClick={() => onSolPayOpen()}>
-            Solana Pay
-          </Button>
-          {!showSolanaPay && (
-            <QR
-              level={'H'}
-              includeMargin={false}
-              value={address}
-              // value={TEST_SOLANA_PAY_DATA}
-              size={330}
-              fgColor="#4e4e4e"
-              imageSettings={{
-                width: 90,
-                height: 90,
-                excavate: true,
-                src: '/logo.svg',
-              }}
-            />
-          )}
-          {/* Empty ref that gets updated with solana pay qr */}
-          <div ref={ref} style={{ display: showSolanaPay ? 'block' : 'none' }} />
+
+          <QR
+            level={'H'}
+            includeMargin={false}
+            value={address}
+            // value={TEST_SOLANA_PAY_DATA}
+            size={330}
+            fgColor="#4e4e4e"
+            imageSettings={{
+              width: 90,
+              height: 90,
+              excavate: true,
+              src: '/logo.svg',
+            }}
+          />
 
           <Text width="330px" fontSize="20px" textAlign="center">
             {address}
@@ -397,6 +399,8 @@ const Home: NextPage = () => {
                     try {
                       const data = parseURL(text); // parse throws on invalid url
                       console.log(data);
+                      console.log(data.amount?.toString());
+                      console.log(data.recipient.toBase58());
                       setSolanaPayData(data);
                       onScannerClose();
                       onSolPayOpen();
@@ -421,9 +425,6 @@ const Home: NextPage = () => {
           <ModalCloseButton />
           <ModalBody>
             <VStack mb="24px" spacing={4}>
-              <Button size="xs" onClick={() => setShowSolanaPay(!showSolanaPay)}>
-                Show Solana Pay
-              </Button>
               <Flex width="100%" justifyContent="space-between" alignItems="center">
                 <Text fontSize={'xl'}>Current Wallet</Text>
                 <Text fontSize={'xl'} fontWeight={'600'}>
@@ -518,14 +519,16 @@ const Home: NextPage = () => {
                 <Text fontSize={'md'} fontWeight={500}>
                   Amount
                 </Text>
-                <Text fontSize={'2xl'}>{solanaPayData.amount?.dividedBy(LAMPORTS_PER_SOL).toFixed(2)} SOL</Text>
+                <Text fontSize={'2xl'}>{solanaPayData.amount!.toNumber().toFixed(4)} SOL</Text>
               </VStack>
             )}
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={() => {}}>
-              Confirm
-            </Button>
+            {solanaPayData && (
+              <Button colorScheme="blue" mr={3} onClick={sendSolanaPayTxn}>
+                Confirm
+              </Button>
+            )}
             <Button variant="ghost" onClick={onSolPayClose}>
               Cancel
             </Button>
