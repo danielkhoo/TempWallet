@@ -226,7 +226,7 @@ const Home: NextPage = () => {
 
     refreshBalances(account, network);
 
-    const displayAmount = (solanaPayData.amount!.toNumber() / LAMPORTS_PER_SOL).toFixed(4);
+    const displayAmount = solanaPayData.amount!.toNumber().toFixed(4);
     toast({
       position: 'top-right',
       title: 'Solana Pay Complete',
