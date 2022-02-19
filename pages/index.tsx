@@ -24,9 +24,8 @@ import {
 import { CopyIcon, CheckIcon, SettingsIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import QR from 'qrcode.react';
-import { QrReader } from 'react-qr-reader';
 import * as Bip39 from 'bip39';
 import axios from 'axios';
 import {
@@ -43,6 +42,7 @@ import {
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { encodeURL, createQR, parseURL, ParsedURL, createTransaction } from '@solana/pay';
 import BigNumber from 'bignumber.js';
+import QrScanner from 'qr-scanner';
 
 const WRAPPED_SOL_SPL_ADDRESS = 'So11111111111111111111111111111111111111112';
 const DEVNET_USDC_SPL_PUBLIC_KEY = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
@@ -285,6 +285,40 @@ const Home: NextPage = () => {
     refreshBalances(accountKeypair, network);
   }, []);
 
+  const scannerRef = useCallback((videoElement) => {
+    if (videoElement !== null) {
+      const scanner = new QrScanner(
+        videoElement,
+        (result) => {
+          const text = result.data;
+          console.log('text', text);
+          if (text.length === 44) {
+            setSolTransferTo(text);
+            setUsdcTransferTo(text);
+            onScannerClose();
+          } else if (text.indexOf('solana:') != -1) {
+            try {
+              const data = parseURL(text); // parse throws on invalid url
+              console.log(data);
+              console.log(data.amount?.toString());
+              console.log(data.recipient.toBase58());
+              setSolanaPayData(data);
+              onScannerClose();
+              onSolPayOpen();
+            } catch (error) {
+              console.log('invalid solana pay url', text);
+            }
+          }
+        },
+        { maxScansPerSecond: 2, highlightScanRegion: true }
+      );
+      window.scanner = scanner;
+      scanner.start();
+    } else {
+      if (window.scanner) window.scanner.stop();
+    }
+  }, []);
+
   return (
     <div>
       <Head>
@@ -398,36 +432,7 @@ const Home: NextPage = () => {
       <Modal closeOnOverlayClick={true} isOpen={isScannerOpen} onClose={onScannerClose}>
         <ModalOverlay />
         <ModalContent>
-          <QrReader
-            onResult={(result, error) => {
-              if (!!result) {
-                const text = result.getText();
-                if (text) {
-                  console.log('text', text);
-                  if (text.length === 44) {
-                    setSolTransferTo(text);
-                    setUsdcTransferTo(text);
-                    onScannerClose();
-                  } else if (text.indexOf('solana:') != -1) {
-                    try {
-                      const data = parseURL(text); // parse throws on invalid url
-                      console.log(data);
-                      console.log(data.amount?.toString());
-                      console.log(data.recipient.toBase58());
-                      setSolanaPayData(data);
-                      onScannerClose();
-                      onSolPayOpen();
-                    } catch (error) {
-                      console.log('invalid solana pay url', text);
-                    }
-                  }
-                }
-              }
-              // if (!!error) {console.log(error);}
-            }}
-            constraints={{ facingMode: 'environment' }}
-            videoContainerStyle={{ position: 'absolute', left: 0, right: 0, top: 0, margin: 'auto' }}
-          />
+          <video ref={scannerRef} width={'100%'}></video>
         </ModalContent>
       </Modal>
       {/* Wallet Modal */}
