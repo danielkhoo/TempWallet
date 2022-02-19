@@ -312,10 +312,10 @@ const Home: NextPage = () => {
         },
         { maxScansPerSecond: 2, highlightScanRegion: true }
       );
-      window.scanner = scanner;
+      (window as any).scanner = scanner; //THIS IS A HACK
       scanner.start();
     } else {
-      if (window.scanner) window.scanner.stop();
+      if ((window as any).scanner) (window as any).scanner.stop();
     }
   }, []);
 
