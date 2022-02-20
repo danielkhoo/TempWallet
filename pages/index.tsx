@@ -63,6 +63,7 @@ const Home: NextPage = () => {
   // ui state
   const address = account ? account.publicKey.toString() : '';
   const { hasCopied, onCopy } = useClipboard(address);
+  const [isLoading, setIsLoading] = useState(false);
 
   // const BASE_URL = 'http://localhost:3000/';
   const BASE_URL = 'https://tempwallet.xyz';
@@ -145,7 +146,7 @@ const Home: NextPage = () => {
     if (!account) return;
     if (!solTransferTo) return;
     if (solTransferAmount === 0) return;
-
+    setIsLoading(true);
     const connection = new Connection(clusterApiUrl(network), 'confirmed');
     const instructions = SystemProgram.transfer({
       fromPubkey: account.publicKey,
@@ -156,7 +157,7 @@ const Home: NextPage = () => {
 
     const signers = [{ publicKey: account.publicKey, secretKey: account.secretKey }];
     const txnSignature = await sendAndConfirmTransaction(connection, transaction, signers);
-
+    setIsLoading(false);
     refreshBalances(account, network);
     toast({
       position: 'top-right',
@@ -172,7 +173,7 @@ const Home: NextPage = () => {
     if (!account) return;
     if (!usdcTransferTo) return;
     if (usdcTransferAmount === 0) return;
-
+    setIsLoading(true);
     const connection = new Connection(clusterApiUrl(network), 'confirmed');
 
     const toAccountPublicKey = new PublicKey(usdcTransferTo);
@@ -195,7 +196,7 @@ const Home: NextPage = () => {
     );
 
     const txnSignature = await sendAndConfirmTransaction(connection, transaction, [account]);
-
+    setIsLoading(false);
     refreshBalances(account, network);
     toast({
       position: 'top-right',
@@ -210,6 +211,7 @@ const Home: NextPage = () => {
   const sendSolanaPayTxn = async () => {
     if (!account || !solanaPayData) return;
 
+    setIsLoading(true);
     const connection = new Connection(clusterApiUrl(network), 'confirmed');
     const { recipient, amount, splToken, reference, label, message, memo } = solanaPayData;
     console.log('payer', account.publicKey.toBase58());
@@ -223,7 +225,7 @@ const Home: NextPage = () => {
 
     const signers = [{ publicKey: account.publicKey, secretKey: account.secretKey }];
     const txnSignature = await sendAndConfirmTransaction(connection, transaction, signers);
-
+    setIsLoading(false);
     refreshBalances(account, network);
 
     const displayAmount = solanaPayData.amount!.toNumber().toFixed(4);
@@ -392,7 +394,7 @@ const Home: NextPage = () => {
 
               <Flex mt={2} dir="row" justifyContent="space-between">
                 <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setSolTransferAmount(event.target.value)} />
-                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferSol}>
+                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferSol} disabled={isLoading}>
                   Transfer
                 </Button>
               </Flex>
@@ -417,7 +419,7 @@ const Home: NextPage = () => {
 
               <Flex mt={2} dir="row" justifyContent="space-between">
                 <Input placeholder="Amount" mr={4} type="number" onChange={(event: any) => setUsdcTransferAmount(event.target.value)} />
-                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferUsdc}>
+                <Button colorScheme="teal" width="150px" variant="outline" onClick={transferUsdc} disabled={isLoading}>
                   Transfer
                 </Button>
               </Flex>
@@ -543,7 +545,7 @@ const Home: NextPage = () => {
           </ModalBody>
           <ModalFooter>
             {solanaPayData && (
-              <Button colorScheme="blue" mr={3} onClick={sendSolanaPayTxn}>
+              <Button colorScheme="blue" mr={3} onClick={sendSolanaPayTxn} disabled={isLoading}>
                 Confirm
               </Button>
             )}
