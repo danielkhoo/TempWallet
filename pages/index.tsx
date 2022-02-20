@@ -52,7 +52,7 @@ const USD_PER_SPL_USDC = 1000000; // USDC has 6 decimal places
 const Home: NextPage = () => {
   // account and network
   const [account, setAccount] = useState<Keypair>();
-  const [network, setNetwork] = useState<Cluster>('devnet');
+  const [network, setNetwork] = useState<Cluster>('mainnet-beta');
   const [accountMnemonic, setAccountMnemonic] = useState<string>();
 
   // balances
@@ -336,7 +336,7 @@ const Home: NextPage = () => {
       <Flex flexDir={'column'} paddingX="24px" my={4}>
         <Flex flexDir={'row'} justifyContent={'space-between'} alignItems="center">
           <Text fontSize="4xl">🔥</Text>
-          <Select defaultValue={'devnet'} width="160px" height="42px" textAlign={'center'} onChange={changeNetwork}>
+          <Select defaultValue={'mainnet-beta'} width="160px" height="42px" textAlign={'center'} onChange={changeNetwork}>
             <option value="mainnet-beta">mainnet-beta</option>
             <option value="devnet">devnet</option>
           </Select>
